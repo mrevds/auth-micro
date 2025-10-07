@@ -4,6 +4,100 @@ package api;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
 
-option go_package = ""
+option go_package = "github.com/mrevds/auth-micro/api;api";
+
+service Auth {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  //need JWT in metadata
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+}
+
+message UserInfo {
+  string id = 1;
+  string username = 2;  // Read-only
+  string email = 3;
+  string name = 4;
+  int32 age = 5;
+  string bio = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message RegisterRequest {
+  string username = 1;  // Только при регистрации
+  string email = 2;
+  string password = 3;
+  optional string name = 4;
+  optional int32 age = 5;
+  optional string bio = 6;
+}
+message RegisterResponse {
+  string id = 1;
+  UserInfo userInfo = 2;
+  google.protobuf.Timestamp createdAt = 3;
+  google.protobuf.Timestamp updatedAt = 4;
+}
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+message LoginResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  google.protobuf.Timestamp expiresAt = 3;
+}
+message RefreshTokenRequest {
+  string refreshToken = 1;
+}
+message RefreshTokenResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  google.protobuf.Timestamp expiresAt = 3;
+}
+message ValidateTokenRequest {
+  string accessToken = 1;
+}
+message ValidateTokenResponse {
+  bool valid = 1;
+  string userId = 2;
+  google.protobuf.Timestamp expiresAt = 3;
+}
+message GetUserRequest {
+  string userId = 1;
+}
+message GetUserResponse {
+  string id = 1;
+  UserInfo userInfo = 2;
+  google.protobuf.Timestamp createdAt = 3;
+  google.protobuf.Timestamp updatedAt = 4;
+}
+message UpdateUserRequest {
+  string userId = 1;
+  optional string name = 2;
+  optional string email = 3;
+  optional int32 age = 4;
+  optional string bio = 5;
+}
+message UpdateUserResponse {
+  string id = 1;
+  UserInfo userInfo = 2;
+  google.protobuf.Timestamp createdAt = 3;
+  google.protobuf.Timestamp updatedAt = 4;
+}
+
+message ChangePasswordRequest {
+  // userId берется из JWT в metadata
+  string oldPassword = 1;
+  string newPassword = 2;
+}
+message LogoutRequest {
+  string access_token = 1;
+}
