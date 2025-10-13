@@ -42,8 +42,6 @@ message RegisterRequest {
 message RegisterResponse {
   string id = 1;
   UserInfo userInfo = 2;
-  google.protobuf.Timestamp createdAt = 3;
-  google.protobuf.Timestamp updatedAt = 4;
 }
 message LoginRequest {
   string username = 1;

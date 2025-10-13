@@ -1,0 +1,46 @@
+package handler
+
+import (
+	auth "auth-micro/pkg/auth_v1"
+	"auth-micro/internal/auth/service"
+	"context"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+type grpcHandler struct {
+	auth.UnimplementedAuthServer
+	userService service.UserService
+}
+
+func NewGRPCHandler(s service.UserService) auth.AuthServer {
+	return &grpcHandler{userService: s}
+}
+
+func (h *grpcHandler) Register(ctx context.Context, req *auth.RegisterRequest) (*auth.RegisterResponse, error) {
+	user, err := h.userService.Register(ctx, service.RegisterInput{
+		Username: req.Username,
+		Email:    req.Email,
+		Password: req.Password,
+		Name:     req.Name,
+		Age:      req.Age,
+		Bio:      req.Bio,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &auth.RegisterResponse{
+		Id: user.ID,
+		UserInfo: &auth.UserInfo{
+			Id:        user.ID,
+			Username:  user.Username,
+			Email:     user.Email,
+			Name:      user.Name,
+			Age:       user.Age,
+			Bio:       user.Bio,
+			CreatedAt: timestamppb.New(user.CreatedAt),
+			UpdatedAt: timestamppb.New(user.UpdatedAt),
+		},
+	}, nil
+}
