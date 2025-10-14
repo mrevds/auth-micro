@@ -1,10 +1,12 @@
 package handler
 
 import (
-	auth "auth-micro/pkg/auth_v1"
 	"auth-micro/internal/auth/service"
+	auth "auth-micro/pkg/auth_v1"
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -42,5 +44,23 @@ func (h *grpcHandler) Register(ctx context.Context, req *auth.RegisterRequest) (
 			CreatedAt: timestamppb.New(user.CreatedAt),
 			UpdatedAt: timestamppb.New(user.UpdatedAt),
 		},
+	}, nil
+}
+
+func (h *grpcHandler) Login(ctx context.Context, req *auth.LoginRequest) (*auth.LoginResponse, error) {
+	// Валидация
+	if req.Username == "" || req.Password == "" {
+		return nil, status.Error(codes.InvalidArgument, "username and password are required")
+	}
+
+	// Вызов сервиса (теперь возвращает accessToken и refreshToken)
+	accessToken, refreshToken, err := h.userService.Login(ctx, req.Username, req.Password)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+	}
+
+	return &auth.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }

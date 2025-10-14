@@ -50,7 +50,6 @@ message LoginRequest {
 message LoginResponse {
   string accessToken = 1;
   string refreshToken = 2;
-  google.protobuf.Timestamp expiresAt = 3;
 }
 message RefreshTokenRequest {
   string refreshToken = 1;

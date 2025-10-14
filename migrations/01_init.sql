@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 -- Создание таблицы пользователей
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id VARCHAR(36) PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(100),
     email VARCHAR(100) UNIQUE NOT NULL,

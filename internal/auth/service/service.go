@@ -3,6 +3,7 @@ package service
 import (
 	"auth-micro/internal/auth/entity"
 	"auth-micro/internal/auth/repository"
+	"auth-micro/internal/auth/utils"
 	"context"
 	"fmt"
 	"time"
@@ -72,4 +73,84 @@ func getInt32(v *int32) int32 {
 		return 0
 	}
 	return *v
+}
+
+func (s *userService) Login(ctx context.Context, username, password string) (string, string, error) {
+	user, err := s.repo.GetByUsername(ctx, username)
+	if err != nil {
+		return "", "", fmt.Errorf("database error: %w", err)
+	}
+	if user == nil {
+		return "", "", fmt.Errorf("invalid credentials")
+	}
+
+	if err := utils.CheckPasswordHash(password, user.Password); err != nil {
+		return "", "", fmt.Errorf("invalid credentials")
+	}
+
+	// Генерация access token
+	accessToken, err := utils.GenerateToken(user.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	// Генерация refresh token
+	refreshToken, err := utils.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Сохранение refresh token в БД
+	rt := &entity.RefreshToken{
+		ID:        uuid.NewString(),
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		CreatedAt: time.Now(),
+		Revoked:   false,
+	}
+	if err := s.repo.SaveRefreshToken(ctx, rt); err != nil {
+		return "", "", fmt.Errorf("failed to save refresh token: %w", err)
+	}
+
+	return accessToken, refreshToken, nil
+}
+
+func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
+	// Проверка refresh token
+	claims, err := utils.ValidateToken(refreshToken)
+	if err != nil {
+		return "", fmt.Errorf("invalid refresh token")
+	}
+
+	// Проверка типа токена
+	if claims.Type != "refresh" {
+		return "", fmt.Errorf("invalid token type")
+	}
+
+	// Проверка в БД
+	rt, err := s.repo.GetRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return "", fmt.Errorf("database error: %w", err)
+	}
+	if rt == nil || rt.Revoked {
+		return "", fmt.Errorf("refresh token revoked or not found")
+	}
+
+	// Проверка срока действия
+	if time.Now().After(rt.ExpiresAt) {
+		return "", fmt.Errorf("refresh token expired")
+	}
+
+	// Генерация нового access token
+	newAccessToken, err := utils.GenerateToken(claims.UserID) // ✅ Используем claims (переменная)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate new access token: %w", err)
+	}
+
+	return newAccessToken, nil
+}
+
+func (s *userService) Logout(ctx context.Context, refreshToken string) error {
+	return s.repo.RevokeRefreshToken(ctx, refreshToken)
 }

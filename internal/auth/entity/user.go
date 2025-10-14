@@ -13,3 +13,13 @@ type User struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+
+type RefreshToken struct {
+    ID        string
+    UserID    string
+    Token     string
+    ExpiresAt time.Time
+    CreatedAt time.Time
+    Revoked   bool
+}
