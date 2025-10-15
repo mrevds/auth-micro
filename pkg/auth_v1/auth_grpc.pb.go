@@ -25,7 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type AuthClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
-	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*RefreshTokenResponse, error)
 	ValidateToken(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error)
 	// need JWT in metadata
@@ -60,8 +60,8 @@ func (c *authClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *authClient) Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *authClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	out := new(LogoutResponse)
 	err := c.cc.Invoke(ctx, "/api.Auth/Logout", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (c *authClient) ChangePassword(ctx context.Context, in *ChangePasswordReque
 type AuthServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
-	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error)
 	ValidateToken(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error)
 	// need JWT in metadata
@@ -140,7 +140,7 @@ func (UnimplementedAuthServer) Register(context.Context, *RegisterRequest) (*Reg
 func (UnimplementedAuthServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedAuthServer) Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (UnimplementedAuthServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
 func (UnimplementedAuthServer) RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error) {
@@ -208,7 +208,7 @@ func _Auth_Login_Handler(srv interface{}, ctx context.Context, dec func(interfac
 }
 
 func _Auth_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(LogoutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func _Auth_Logout_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		FullMethod: "/api.Auth/Logout",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServer).Logout(ctx, req.(*emptypb.Empty))
+		return srv.(AuthServer).Logout(ctx, req.(*LogoutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

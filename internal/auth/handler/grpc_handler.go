@@ -48,12 +48,10 @@ func (h *grpcHandler) Register(ctx context.Context, req *auth.RegisterRequest) (
 }
 
 func (h *grpcHandler) Login(ctx context.Context, req *auth.LoginRequest) (*auth.LoginResponse, error) {
-	// Валидация
 	if req.Username == "" || req.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "username and password are required")
 	}
 
-	// Вызов сервиса (теперь возвращает accessToken и refreshToken)
 	accessToken, refreshToken, err := h.userService.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
@@ -62,5 +60,20 @@ func (h *grpcHandler) Login(ctx context.Context, req *auth.LoginRequest) (*auth.
 	return &auth.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (h *grpcHandler) Logout(ctx context.Context, req *auth.LogoutRequest) (*auth.LogoutResponse, error) {
+	if req.RefreshToken == "" {
+		return nil, status.Error(codes.InvalidArgument, "refresh token is required")
+	}
+
+	if err := h.userService.Logout(ctx, req.RefreshToken); err != nil {
+		return nil, status.Error(codes.Internal, "failed to logout")
+	}
+
+	return &auth.LogoutResponse{
+		Success: true,
+		Message: "Logged out successfully",
 	}, nil
 }

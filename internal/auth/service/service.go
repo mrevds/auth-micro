@@ -117,18 +117,15 @@ func (s *userService) Login(ctx context.Context, username, password string) (str
 }
 
 func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
-	// Проверка refresh token
 	claims, err := utils.ValidateToken(refreshToken)
 	if err != nil {
 		return "", fmt.Errorf("invalid refresh token")
 	}
 
-	// Проверка типа токена
 	if claims.Type != "refresh" {
 		return "", fmt.Errorf("invalid token type")
 	}
 
-	// Проверка в БД
 	rt, err := s.repo.GetRefreshToken(ctx, refreshToken)
 	if err != nil {
 		return "", fmt.Errorf("database error: %w", err)
