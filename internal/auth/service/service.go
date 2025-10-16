@@ -151,3 +151,74 @@ func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken strin
 func (s *userService) Logout(ctx context.Context, refreshToken string) error {
 	return s.repo.RevokeRefreshToken(ctx, refreshToken)
 }
+
+func (s *userService) GetUserInfo(ctx context.Context, username, token string) (*entity.User, error) {
+	claims, err := utils.ValidateToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	if claims.Type != "access" {
+		return nil, fmt.Errorf("invalid token type")
+	}
+
+	user, err := s.repo.GetByUsername(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("database error: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	// Проверяем, что запрашиваемый пользователь совпадает с пользователем из токена
+	if user.ID != claims.UserID {
+		return nil, fmt.Errorf("unauthorized access")
+	}
+
+	return user, nil
+}
+
+func (s *userService) ChangePassword(ctx context.Context, accessToken, currentPassword, newPassword string) error {
+	// Валидация и извлечение userID из токена (Service знает про JWT)
+	claims, err := utils.ValidateToken(accessToken)
+	if err != nil {
+		return fmt.Errorf("invalid token: %w", err)
+	}
+
+	if claims.Type != "access" {
+		return fmt.Errorf("invalid token type")
+	}
+
+	userID := claims.UserID
+
+	// Получить пользователя из БД
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("user not found")
+	}
+
+	// Проверить текущий пароль
+	if err := utils.CheckPasswordHash(currentPassword, user.Password); err != nil {
+		return fmt.Errorf("current password is incorrect")
+	}
+
+	// Хешировать новый пароль
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Обновить пароль в БД
+	if err := s.repo.UpdatePassword(ctx, userID, hashedPassword); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}
+
+func (s *userService) GetUserByID(ctx context.Context, userID string) (*entity.User, error) {
+	return s.repo.GetByID(ctx, userID)
+}

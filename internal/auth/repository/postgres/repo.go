@@ -89,3 +89,43 @@ func (r *userRepo) RevokeUserRefreshTokens(ctx context.Context, userID string) e
     `, userID)
 	return err
 }
+
+func (r *userRepo) GetUser(ctx context.Context, username string) (*entity.User, error) {
+	row := r.db.Pool.QueryRow(ctx, `
+		SELECT id, username, name, email, age, bio, password, created_at, updated_at
+		FROM users WHERE username = $1
+	`, username)
+
+	var u entity.User
+	if err := row.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Age, &u.Bio, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// GetByID получает пользователя по ID
+func (r *userRepo) GetByID(ctx context.Context, id string) (*entity.User, error) {
+	row := r.db.Pool.QueryRow(ctx, `
+		SELECT id, username, name, email, age, bio, password, created_at, updated_at
+		FROM users WHERE id = $1
+	`, id)
+
+	var u entity.User
+	if err := row.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Age, &u.Bio, &u.Password, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
+// UpdatePassword обновляет только пароль пользователя
+func (r *userRepo) UpdatePassword(ctx context.Context, userID, hashedPassword string) error {
+	_, err := r.db.Pool.Exec(ctx, `
+		UPDATE users 
+		SET password = $1, updated_at = NOW() 
+		WHERE id = $2
+	`, hashedPassword, userID)
+	return err
+}

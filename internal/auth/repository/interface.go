@@ -11,7 +11,9 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
 
 	SaveRefreshToken(ctx context.Context, rt *entity.RefreshToken) error
-    GetRefreshToken(ctx context.Context, token string) (*entity.RefreshToken, error)
-    RevokeRefreshToken(ctx context.Context, token string) error
-    RevokeUserRefreshTokens(ctx context.Context, userID string) error
+	GetRefreshToken(ctx context.Context, token string) (*entity.RefreshToken, error)
+	RevokeRefreshToken(ctx context.Context, token string) error
+	RevokeUserRefreshTokens(ctx context.Context, userID string) error
+	GetByID(ctx context.Context, id string) (*entity.User, error)
+	UpdatePassword(ctx context.Context, userID, hashedPassword string) error
 }

@@ -17,7 +17,7 @@ service Auth {
   //need JWT in metadata
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-  rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
 }
 
 message UserInfo {
@@ -69,12 +69,11 @@ message ValidateTokenResponse {
 }
 message GetUserRequest {
   string userId = 1;
+  string token = 2; // JWT токен для аутентификации
 }
 message GetUserResponse {
   string id = 1;
   UserInfo userInfo = 2;
-  google.protobuf.Timestamp createdAt = 3;
-  google.protobuf.Timestamp updatedAt = 4;
 }
 message UpdateUserRequest {
   string userId = 1;
@@ -94,6 +93,10 @@ message ChangePasswordRequest {
   // userId берется из JWT в metadata
   string oldPassword = 1;
   string newPassword = 2;
+}
+message ChangePasswordResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 message LogoutRequest {

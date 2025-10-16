@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -75,5 +76,34 @@ func (h *grpcHandler) Logout(ctx context.Context, req *auth.LogoutRequest) (*aut
 	return &auth.LogoutResponse{
 		Success: true,
 		Message: "Logged out successfully",
+	}, nil
+}
+
+func (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswordRequest) (*auth.ChangePasswordResponse, error) {
+	// Валидация
+	if req.NewPassword == "" || req.OldPassword == "" {
+		return nil, status.Error(codes.InvalidArgument, "current and new passwords are required")
+	}
+
+	// Получить токен из metadata (Handler НЕ знает что внутри токена!)
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing token")
+	}
+
+	tokens := md.Get("authorization")
+	if len(tokens) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "missing token")
+	}
+
+	// Просто передаем токен в Service (Handler не парсит его!)
+	err := h.userService.ChangePassword(ctx, tokens[0], req.OldPassword, req.NewPassword)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &auth.ChangePasswordResponse{
+		Success: true,
+		Message: "Password changed successfully",
 	}, nil
 }

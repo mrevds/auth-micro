@@ -11,4 +11,6 @@ type UserService interface {
 	Login(ctx context.Context, username, password string) (accessToken string, refreshToken string, err error)
 	RefreshAccessToken(ctx context.Context, refreshToken string) (string, error)
 	Logout(ctx context.Context, refreshToken string) error
+	GetUserByID(ctx context.Context, userID string) (*entity.User, error)
+	ChangePassword(ctx context.Context, userID, oldPassword, newPassword string) error
 }
