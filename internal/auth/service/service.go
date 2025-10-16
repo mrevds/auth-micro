@@ -13,11 +13,15 @@ import (
 )
 
 type userService struct {
-	repo repository.UserRepository
+	repo       repository.UserRepository
+	jwtManager *utils.JWTManager
 }
 
-func NewUserService(repo repository.UserRepository) UserService {
-	return &userService{repo: repo}
+func NewUserService(repo repository.UserRepository, jwtManager *utils.JWTManager) UserService {
+	return &userService{
+		repo:       repo,
+		jwtManager: jwtManager,
+	}
 }
 
 type RegisterInput struct {
@@ -88,19 +92,17 @@ func (s *userService) Login(ctx context.Context, username, password string) (str
 		return "", "", fmt.Errorf("invalid credentials")
 	}
 
-	// Генерация access token
-	accessToken, err := utils.GenerateToken(user.ID)
+	// Использование JWTManager вместо прямых вызовов utils
+	accessToken, err := s.jwtManager.GenerateToken(user.ID)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	// Генерация refresh token
-	refreshToken, err := utils.GenerateRefreshToken(user.ID)
+	refreshToken, err := s.jwtManager.GenerateRefreshToken(user.ID)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	// Сохранение refresh token в БД
 	rt := &entity.RefreshToken{
 		ID:        uuid.NewString(),
 		UserID:    user.ID,
@@ -117,7 +119,8 @@ func (s *userService) Login(ctx context.Context, username, password string) (str
 }
 
 func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
-	claims, err := utils.ValidateToken(refreshToken)
+	// Использование JWTManager
+	claims, err := s.jwtManager.ValidateToken(refreshToken)
 	if err != nil {
 		return "", fmt.Errorf("invalid refresh token")
 	}
@@ -134,13 +137,11 @@ func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken strin
 		return "", fmt.Errorf("refresh token revoked or not found")
 	}
 
-	// Проверка срока действия
 	if time.Now().After(rt.ExpiresAt) {
 		return "", fmt.Errorf("refresh token expired")
 	}
 
-	// Генерация нового access token
-	newAccessToken, err := utils.GenerateToken(claims.UserID) // ✅ Используем claims (переменная)
+	newAccessToken, err := s.jwtManager.GenerateToken(claims.UserID)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate new access token: %w", err)
 	}
@@ -148,12 +149,36 @@ func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken strin
 	return newAccessToken, nil
 }
 
+func (s *userService) ChangePassword(ctx context.Context, token, oldPassword, newPassword string) error {
+	// Использование JWTManager
+	claims, err := s.jwtManager.ValidateToken(token)
+	if err != nil {
+		return fmt.Errorf("invalid token: %w", err)
+	}
+
+	user, err := s.repo.GetByID(ctx, claims.UserID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	if err := utils.CheckPasswordHash(oldPassword, user.Password); err != nil {
+		return fmt.Errorf("current password is incorrect")
+	}
+
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return s.repo.UpdatePassword(ctx, claims.UserID, hashedPassword)
+}
+
 func (s *userService) Logout(ctx context.Context, refreshToken string) error {
 	return s.repo.RevokeRefreshToken(ctx, refreshToken)
 }
 
 func (s *userService) GetUserInfo(ctx context.Context, username, token string) (*entity.User, error) {
-	claims, err := utils.ValidateToken(token)
+	claims, err := s.jwtManager.ValidateToken(token)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
@@ -176,47 +201,6 @@ func (s *userService) GetUserInfo(ctx context.Context, username, token string) (
 	}
 
 	return user, nil
-}
-
-func (s *userService) ChangePassword(ctx context.Context, accessToken, currentPassword, newPassword string) error {
-	// Валидация и извлечение userID из токена (Service знает про JWT)
-	claims, err := utils.ValidateToken(accessToken)
-	if err != nil {
-		return fmt.Errorf("invalid token: %w", err)
-	}
-
-	if claims.Type != "access" {
-		return fmt.Errorf("invalid token type")
-	}
-
-	userID := claims.UserID
-
-	// Получить пользователя из БД
-	user, err := s.repo.GetByID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("user not found: %w", err)
-	}
-	if user == nil {
-		return fmt.Errorf("user not found")
-	}
-
-	// Проверить текущий пароль
-	if err := utils.CheckPasswordHash(currentPassword, user.Password); err != nil {
-		return fmt.Errorf("current password is incorrect")
-	}
-
-	// Хешировать новый пароль
-	hashedPassword, err := utils.HashPassword(newPassword)
-	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	// Обновить пароль в БД
-	if err := s.repo.UpdatePassword(ctx, userID, hashedPassword); err != nil {
-		return fmt.Errorf("failed to update password: %w", err)
-	}
-
-	return nil
 }
 
 func (s *userService) GetUserByID(ctx context.Context, userID string) (*entity.User, error) {

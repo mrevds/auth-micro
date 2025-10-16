@@ -38,3 +38,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+config.yaml
+config.*.yaml

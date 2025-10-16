@@ -1,20 +1,17 @@
 package app
 
 import (
-	"go.uber.org/fx"
+    "go.uber.org/fx"
 
-	handlerAuth "auth-micro/internal/auth/handler"
-	repoPostgres "auth-micro/internal/auth/repository/postgres"
-	serviceAuth "auth-micro/internal/auth/service"
+    "auth-micro/internal/auth/handler"
+    repoPostgres "auth-micro/internal/auth/repository/postgres"
+    serviceAuth "auth-micro/internal/auth/service"
+    "auth-micro/internal/auth/utils"
 )
 
 var Module = fx.Module("app",
-	// Repository layer
-	fx.Provide(repoPostgres.NewUserRepo),
-
-	// Service layer
-	fx.Provide(serviceAuth.NewUserService),
-
-	// Handler layer
-	fx.Provide(handlerAuth.NewGRPCHandler),
+    fx.Provide(repoPostgres.NewUserRepo),
+    fx.Provide(utils.NewJWTManager),
+    fx.Provide(serviceAuth.NewUserService),
+    fx.Provide(handler.NewGRPCHandler),
 )
