@@ -16,6 +16,8 @@
 - **Goose** - миграции БД
 - **Uber FX** - dependency injection
 - **pgx/v4** - драйвер PostgreSQL с connection pooling
+- **Uber Ratelimit - Либа для ограничения запросов
+- **Viper - Либа для конфигурации, гибчее и чище чем стандартная 
 
 **Принципы:**
 - Clean Architecture
