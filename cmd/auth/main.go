@@ -28,7 +28,7 @@ func main() {
 			newRateLimiter,
 		),
 
-		// Модули
+		// Модулиk
 		app.Module,
 
 		// Lifecycle для gRPC сервера
