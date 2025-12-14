@@ -34,16 +34,35 @@ type RegisterInput struct {
 }
 
 func (s *userService) Register(ctx context.Context, input RegisterInput) (*entity.User, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	existing, _ := s.repo.GetByUsername(ctx, input.Username)
 	if existing != nil {
 		return nil, fmt.Errorf("username already taken")
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
+	type hashResult struct {
+		hashed []byte
+		err    error
 	}
+	hashChan := make(chan hashResult, 1)
+	go func() {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		hashChan <- hashResult{hashed: hashed, err: err}
+	}()
 
+	var hashed []byte
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case result := <-hashChan:
+		if result.err != nil {
+			return nil, result.err
+		}
+		hashed = result.hashed
+	}
 	user := &entity.User{
 		ID:        uuid.NewString(),
 		Username:  input.Username,

@@ -4,6 +4,7 @@ import (
 	"auth-micro/internal/auth/service"
 	auth "auth-micro/pkg/auth_v1"
 	"context"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -21,6 +22,9 @@ func NewGRPCHandler(s service.UserService) auth.AuthServer {
 }
 
 func (h *grpcHandler) Register(ctx context.Context, req *auth.RegisterRequest) (*auth.RegisterResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	user, err := h.userService.Register(ctx, service.RegisterInput{
 		Username: req.Username,
 		Email:    req.Email,
@@ -85,7 +89,6 @@ func (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswo
 		return nil, status.Error(codes.InvalidArgument, "current and new passwords are required")
 	}
 
-	// Получить токен из metadata (Handler НЕ знает что внутри токена!)
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "missing token")
@@ -96,7 +99,6 @@ func (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswo
 		return nil, status.Error(codes.Unauthenticated, "missing token")
 	}
 
-	// Просто передаем токен в Service (Handler не парсит его!)
 	err := h.userService.ChangePassword(ctx, tokens[0], req.OldPassword, req.NewPassword)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

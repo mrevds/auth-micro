@@ -1,0 +1,22 @@
+warning: LF will be replaced by CRLF in internal/auth/handler/grpc_handler.go.
+The file will have its original line endings in your working directory
+[1mdiff --git a/internal/auth/handler/grpc_handler.go b/internal/auth/handler/grpc_handler.go[m
+[1mindex b7e5fbe..d238199 100644[m
+[1m--- a/internal/auth/handler/grpc_handler.go[m
+[1m+++ b/internal/auth/handler/grpc_handler.go[m
+[36m@@ -85,7 +85,6 @@[m [mfunc (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswo[m
+ 		return nil, status.Error(codes.InvalidArgument, "current and new passwords are required")[m
+ 	}[m
+ [m
+[31m-	// Получить токен из metadata (Handler НЕ знает что внутри токена!)[m
+ 	md, ok := metadata.FromIncomingContext(ctx)[m
+ 	if !ok {[m
+ 		return nil, status.Error(codes.Unauthenticated, "missing token")[m
+[36m@@ -96,7 +95,6 @@[m [mfunc (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswo[m
+ 		return nil, status.Error(codes.Unauthenticated, "missing token")[m
+ 	}[m
+ [m
+[31m-	// Просто передаем токен в Service (Handler не парсит его!)[m
+ 	err := h.userService.ChangePassword(ctx, tokens[0], req.OldPassword, req.NewPassword)[m
+ 	if err != nil {[m
+ 		return nil, status.Error(codes.Internal, err.Error())[m
