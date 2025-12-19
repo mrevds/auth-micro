@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -56,7 +57,8 @@ func (h *grpcHandler) Login(ctx context.Context, req *auth.LoginRequest) (*auth.
 	if req.Username == "" || req.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "username and password are required")
 	}
-
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	accessToken, refreshToken, err := h.userService.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
@@ -84,7 +86,6 @@ func (h *grpcHandler) Logout(ctx context.Context, req *auth.LogoutRequest) (*aut
 }
 
 func (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswordRequest) (*auth.ChangePasswordResponse, error) {
-	// Валидация
 	if req.NewPassword == "" || req.OldPassword == "" {
 		return nil, status.Error(codes.InvalidArgument, "current and new passwords are required")
 	}
@@ -107,5 +108,41 @@ func (h *grpcHandler) ChangePassword(ctx context.Context, req *auth.ChangePasswo
 	return &auth.ChangePasswordResponse{
 		Success: true,
 		Message: "Password changed successfully",
+	}, nil
+}
+
+func (h *grpcHandler) GetUser(ctx context.Context, _ *emptypb.Empty) (*auth.GetUserResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing token")
+	}
+	tokens := md.Get("authorization")
+	if len(tokens) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "missing token")
+	}
+
+	token := tokens[0]
+
+	// Если токен приходит как "Bearer <token>", нужно убрать "Bearer "
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+
+	user, err := h.userService.GetUserInfo(ctx, token)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &auth.GetUserResponse{
+		UserInfo: &auth.UserInfo{
+			Id:        user.ID,
+			Username:  user.Username,
+			Email:     user.Email,
+			Name:      user.Name,
+			Age:       user.Age,
+			Bio:       user.Bio,
+			CreatedAt: timestamppb.New(user.CreatedAt),
+			UpdatedAt: timestamppb.New(user.UpdatedAt),
+		},
 	}, nil
 }

@@ -13,4 +13,5 @@ type UserService interface {
 	Logout(ctx context.Context, refreshToken string) error
 	GetUserByID(ctx context.Context, userID string) (*entity.User, error)
 	ChangePassword(ctx context.Context, userID, oldPassword, newPassword string) error
+	GetUserInfo(ctx context.Context, token string) (*entity.User, error)
 }

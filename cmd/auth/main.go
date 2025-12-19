@@ -20,18 +20,13 @@ import (
 
 func main() {
 	fx.New(
-		// Провайдеры
 		fx.Provide(
-			config.Load,   // Загрузка конфигурации
-			client.NewDB,  // БД с lifecycle
-			newGRPCServer, // gRPC сервер
+			config.Load, 
+			client.NewDB, 
+			newGRPCServer,
 			newRateLimiter,
 		),
-
-		// Модулиk
 		app.Module,
-
-		// Lifecycle для gRPC сервера
 		fx.Invoke(registerGRPCServer),
 	).Run()
 }

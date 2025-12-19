@@ -14,15 +14,12 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-// NewDB создает подключение к БД с lifecycle hooks
 func NewDB(lc fx.Lifecycle, cfg *config.Config) (*DB, error) {
-	// Парсим конфигурацию
 	poolConfig, err := pgxpool.ParseConfig(cfg.GetDSN())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DSN: %w", err)
 	}
 
-	// Настройка пула
 	poolConfig.MaxConns = cfg.Database.MaxConns
 	poolConfig.MinConns = cfg.Database.MinConns
 	poolConfig.MaxConnLifetime = time.Hour
@@ -31,7 +28,6 @@ func NewDB(lc fx.Lifecycle, cfg *config.Config) (*DB, error) {
 	var pool *pgxpool.Pool
 	db := &DB{}
 
-	// Lifecycle hooks
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			pool, err = pgxpool.ConnectConfig(ctx, poolConfig)

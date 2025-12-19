@@ -15,7 +15,7 @@ service Auth {
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
 
   //need JWT in metadata
-  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc GetUser(google.protobuf.Empty) returns (GetUserResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
 }
@@ -67,10 +67,7 @@ message ValidateTokenResponse {
   string userId = 2;
   google.protobuf.Timestamp expiresAt = 3;
 }
-message GetUserRequest {
-  string userId = 1;
-  string token = 2; // JWT токен для аутентификации
-}
+
 message GetUserResponse {
   string id = 1;
   UserInfo userInfo = 2;

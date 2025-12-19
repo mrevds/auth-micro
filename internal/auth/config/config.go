@@ -72,7 +72,7 @@ func Load() (*Config, error) {
 	v.SetDefault("server.host", "localhost")
 
 	v.SetDefault("database.host", "localhost")
-	v.SetDefault("database.port", "54322")
+	v.SetDefault("database.port", "5431")
 	v.SetDefault("database.user", "auth_db_user")
 	v.SetDefault("database.password", "auth_db_password")
 	v.SetDefault("database.dbname", "auth_db")
@@ -124,9 +124,9 @@ func Load() (*Config, error) {
 			AccessTokenDuration:  accessDuration,
 			RefreshTokenDuration: refreshDuration,
 		},
-        RateLimit: RateLimitConfig{
-            RequestsPerSecond: v.GetInt("rate_limit.requests_per_second"),
-        },
+		RateLimit: RateLimitConfig{
+			RequestsPerSecond: v.GetInt("rate_limit.requests_per_second"),
+		},
 	}
 
 	return cfg, nil

@@ -33,6 +33,9 @@ func (r *userRepo) GetByUsername(ctx context.Context, username string) (*entity.
 
 	var u entity.User
 	if err := row.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Age, &u.Bio, &u.Password, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &u, nil
@@ -90,11 +93,11 @@ func (r *userRepo) RevokeUserRefreshTokens(ctx context.Context, userID string) e
 	return err
 }
 
-func (r *userRepo) GetUser(ctx context.Context, username string) (*entity.User, error) {
+func (r *userRepo) GetUser(ctx context.Context, id string) (*entity.User, error) {
 	row := r.db.Pool.QueryRow(ctx, `
-		SELECT id, username, name, email, age, bio, password, created_at, updated_at
-		FROM users WHERE username = $1
-	`, username)
+		SELECT id, username, name, email, age, bio, created_at, updated_at
+		FROM users WHERE id = $1
+	`, id)
 
 	var u entity.User
 	if err := row.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Age, &u.Bio, &u.CreatedAt, &u.UpdatedAt); err != nil {

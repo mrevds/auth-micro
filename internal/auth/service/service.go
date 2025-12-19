@@ -99,20 +99,45 @@ func getInt32(v *int32) int32 {
 }
 
 func (s *userService) Login(ctx context.Context, username, password string) (string, string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", "", err
+	}
+	startRepo := time.Now()
 	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
 		return "", "", fmt.Errorf("database error: %w", err)
 	}
+	fmt.Println("GetByUsername", time.Since(startRepo))
 	if user == nil {
 		return "", "", fmt.Errorf("invalid credentials")
 	}
 
-	if err := utils.CheckPasswordHash(password, user.Password); err != nil {
+	type hashResult struct {
+		valid bool
+		err   error
+	}
+	hashChan := make(chan hashResult, 1)
+	go func() {
+		err := utils.CheckPasswordHash(password, user.Password)
+		hashChan <- hashResult{valid: err == nil, err: err}
+	}()
+
+	var passwordValid bool
+	select {
+	case <-ctx.Done():
+		return "", "", ctx.Err()
+	case result := <-hashChan:
+		if result.err != nil || !result.valid {
+			return "", "", fmt.Errorf("invalid credintials")
+		}
+		passwordValid = true
+	}
+	if !passwordValid {
 		return "", "", fmt.Errorf("invalid credentials")
 	}
-
-	// Использование JWTManager вместо прямых вызовов utils
+	start := time.Now()
 	accessToken, err := s.jwtManager.GenerateToken(user.ID)
+	fmt.Printf("GenerateToken took: %v\n", time.Since(start))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate access token: %w", err)
 	}
@@ -138,7 +163,7 @@ func (s *userService) Login(ctx context.Context, username, password string) (str
 }
 
 func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
-	// Использование JWTManager
+	
 	claims, err := s.jwtManager.ValidateToken(refreshToken)
 	if err != nil {
 		return "", fmt.Errorf("invalid refresh token")
@@ -169,7 +194,7 @@ func (s *userService) RefreshAccessToken(ctx context.Context, refreshToken strin
 }
 
 func (s *userService) ChangePassword(ctx context.Context, token, oldPassword, newPassword string) error {
-	// Использование JWTManager
+	
 	claims, err := s.jwtManager.ValidateToken(token)
 	if err != nil {
 		return fmt.Errorf("invalid token: %w", err)
@@ -196,30 +221,41 @@ func (s *userService) Logout(ctx context.Context, refreshToken string) error {
 	return s.repo.RevokeRefreshToken(ctx, refreshToken)
 }
 
-func (s *userService) GetUserInfo(ctx context.Context, username, token string) (*entity.User, error) {
+func (s *userService) GetUserInfo(ctx context.Context, token string) (*entity.User, error) {
+	fmt.Printf("[GetUserInfo] Starting with token: %s...\n", token[:minInt(50, len(token))])
+
 	claims, err := s.jwtManager.ValidateToken(token)
 	if err != nil {
+		fmt.Printf("[GetUserInfo] ValidateToken failed: %v\n", err)
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
+	fmt.Printf("[GetUserInfo] Token validated. UserID: %s, Type: %s\n", claims.UserID, claims.Type)
 
 	if claims.Type != "access" {
+		fmt.Printf("[GetUserInfo] Invalid token type: %s\n", claims.Type)
 		return nil, fmt.Errorf("invalid token type")
 	}
 
-	user, err := s.repo.GetByUsername(ctx, username)
+	fmt.Printf("[GetUserInfo] Getting user by ID: %s\n", claims.UserID)
+	user, err := s.repo.GetByID(ctx, claims.UserID)
 	if err != nil {
+		fmt.Printf("[GetUserInfo] GetByID error: %v\n", err)
 		return nil, fmt.Errorf("database error: %w", err)
 	}
 	if user == nil {
+		fmt.Printf("[GetUserInfo] User not found for ID: %s\n", claims.UserID)
 		return nil, fmt.Errorf("user not found")
 	}
 
-	// Проверяем, что запрашиваемый пользователь совпадает с пользователем из токена
-	if user.ID != claims.UserID {
-		return nil, fmt.Errorf("unauthorized access")
-	}
-
+	fmt.Printf("[GetUserInfo] User found: %s (%s)\n", user.Username, user.ID)
 	return user, nil
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (s *userService) GetUserByID(ctx context.Context, userID string) (*entity.User, error) {
